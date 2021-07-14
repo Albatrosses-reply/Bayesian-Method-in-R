@@ -1,0 +1,326 @@
+---
+output:
+  html_document: 
+  pdf_document:
+    keep_tex: yes
+    latex_engine: xelatex
+editor_options:
+  chunk_output_type: console
+---
+
+```{r global-options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE)
+```
+```{r, setup, include=FALSE}
+knitr::opts_knit$set(root.dir ="C:/Users/Hojun Kang/OneDrive - Sogang/1. 서강대학교/1. 공부자료/수업자료/2. 대학원/2021-1/Bayesian Methodology/assignment/final", echo=TRUE)
+```
+
+# Final Takehome Exam
+### 320200064 MIS 박사과정 강호준
+### 2021.06.23 
+### Main Question 1
+> Consider a random variable that follows the Weibull distribution given by<br/><br/> 
+<center>$p(y|\gamma,\beta)=\gamma\beta y^{\beta-1} e^{-\gamma y^\beta}$</center><br/>
+where $y>0, \beta > 0$ and $\gamma > 0$ Note that if $\beta=1$ then the above distribution becomes an exponential distribution.
+
+>Given data $D=(y_1, y_2, ... , y_n)$ from the above distribution write down the 
+likelihood function of $\gamma$  and  $\beta$. Assuming $\beta$ is given obtain the maximum likelihood estimator of $\gamma$
+
+---
+
+#### Question 1-1. 
+> Compute the likelihood function of $\theta$ and obtain a plot of the likelihood function. 
+
+```{r}
+library(EnvStats)
+library(ExtDist)
+set.seed(1000)
+y=rWeibull(100, shape=1, scale=1)
+mle=eweibull(y, method="mle")
+mle$parameters
+```
+
+#### Question 1-2.
+>  There is no conjugate Bayesian analysis of the Weibull model, but one can use a Gibbs sampler to obtain the posterior distributions of $\gamma$ and $\beta$. Recall that implementation of the Gibbs sampler requires the full posterior conditional distributions $p(\gamma|D, \beta)$ and $p(\beta|$gamma, D)$. Assuming $\gamma$ has a gamma prior $\gamma ~ Gam(a,b)$, write down the from for $p(\gamma|D, \beta). You can assume apriori $\gamma$ in independent of $\beta$
+
+```{r}
+n=length(y)
+a0=1
+b0=0.5
+shape=mle$parameters[1]
+scale=mle$parameters[2]
+gen=10000
+a=1
+b=.5
+bet=rgamma(gen,a,1/b)
+beta=sort(bet)
+
+w=rep(0,gen)
+
+for (i in 1:gen) {
+  logL=n*log(beta[i])+(beta[i]-1)*sum(log(y))-sum(y^beta[i])
+  w[i]=exp(logL)
+}
+head(w)
+q=w/sum(w)
+plot(beta,q,main="Sampled values and q's",type="h",ylab="Probability")
+
+```
+#### Question 1-3
+>What type of a distribution is $p(\gamma|D,\beta)$ ? What are its parameters
+
+```{r}
+library(fitdistrplus)
+descdist(q)
+estBetaParams <- function(mu, var) {
+  alpha <- ((1 - mu) / var - 1 / mu) * mu ^ 2
+  beta <- alpha * (1 / mu - 1)
+  return(params = list(alpha = alpha, beta = beta))
+}
+mu=mean(q)
+var=var(q)
+result=estBetaParams(mu, var)
+result$alpha ; result$beta
+
+```
+#### Question 1-4
+> Given $\beta$, obtain the posterior predictive distribution of $Y$ given $D$ .
+
+```{r}
+nsim=10000
+bstar=sample(beta,nsim,replace=TRUE,q)
+plot(density(bstar,bw=0.3))
+summary(bstar)
+
+par(mfrow=c(1,2))
+plot(beta,q,main="Sampled values and q's",type="h",ylab="Probability")
+plot(density(bstar,bw=.3),main="Resampled values",xlab="beta")
+```
+#### Quesiton 1-5
+
+> Assume that given data $D=(y_1, y_2, y_3 ... y_n)$ from the Weibull distribution we want to compare two models $\beta=1$ versus $\beta=2$. Please obtain the Bayes factor in favor of $\beta=1$, that is, obtain its general form for the hypotheses.
+
+```{r}
+library(BayesFactor)
+par(mfrow=c(1,1))
+y1=rWeibull(100, shape=1, scale=1)
+y2=rWeibull(100, shape=2, scale=1)
+
+mean(y1)
+mean(y2)
+boxplot(y1, y2)
+result=ttestBF(y2, y1)
+result
+```
+#### Question 1-6
+>  You are given 25 observations of call durations in minutes to a call center in data set "duration.txt". We are interested in whether the exponential model $(\beta=1)$  or the Weibull model with $\beta=2$ is supported by the call duration data. Use your result in part (5) to compute the Bayes Factor in favor of $\beta=1$ for this data set. In so doing use the gamma prior with $a=1$ and $b=1$ for $\gamma$
+
+```{r}
+duration=read.table('duration.txt')
+result1=ttestBF(y1, duration$V1)
+result2=ttestBF(y2, duration$V1)
+result1 ; result2
+```
+
+### Main Question 2 - Consider the Market Model
+><center>$R_t = \alpha + \beta M_t+\varepsilon$ <center/><br/>
+where $R_t$ is the return on a stock at time $t$, $M_t$ is the market return at time $t$ and the $\varepsilon_t$'s are normally distributed independent error terms with 0 mean and variance $1/phi$, that is $\varepsilon ~ N(0,1/\phi)$. It is well known that, in the above, $\beta$ represents whether the particular stock is more or less riskier than the market. In other words, $\beta>1$ implies a riskier stock "  "
+and so on. The term "Beta coefficient" is commonly used to represent the risk associated with a stock. You are given 119 monthly returns on the market $(M)$ and stock $(R)$ in the text file: Stock_Return.txt [Note that the first row specifies the corresponding variable names].
+
+#### Question 2-1
+> Using WinBUGS develop a Bayesian analysis of the Market model and in so doing, use the following (independent) priors:<br/>
+<br/><center>$a~N(0, 100)$<center/>
+<br/><center>$\beta~N(0, 100)$<center/>
+<br/><center>$\phi~Gamma(0.01, 0.01)$<center/><br/>
+Note that in WinBUGS you specify the precision in the precision in the $dnorm$ function. Thus the precisions for the first two normal priors are both. In your analysis use an initial run of 1,000 iterations and after that collect samples based on 5,000 iterations. Please submit the density plots for posterior distributions of $\alpha$ and $\beta$. Obtain the 95% posterior central credibility interval for $\beta$ and interpret it
+
+```{r}
+library(R2WinBUGS)
+library(R2OpenBUGS)
+linemodel1 <- function() {
+  for (j in 1:119) {
+
+    Y[j] ~ dnorm(mu[j], sigma)  ## Response values Y are Normally distributed
+    mu[j] <- alpha + beta * M[j]  ## linear model with x values centred
+  }
+  ## prediction
+  pred <- alpha + beta*(0.036)
+  pred.119 <- step(pred-119)
+  ## Priors
+  Y.new ~ dnorm(pred, sigma)
+  alpha ~ dnorm(0, 10)
+  beta ~ dnorm(0, 10)
+  tau ~ dgamma(0.01, 0.01)
+  sigma <- 1/sqrt(tau)
+
+}
+
+lineinits <- function() {
+  list(alpha = 1, beta = 1, tau = 1)
+}
+lineout_1000=bugs(data='Stock_Return.txt', 
+             inits=lineinits, 
+             parameters.to.save=c('alpha', 'beta', 'pred'), 
+             model.file=linemodel1, n.chains=1, n.iter=1000, codaPkg = TRUE)
+
+read.bugs1=R2WinBUGS::read.bugs(lineout_1000)
+pred=as.data.frame(read.bugs1[1:119, 4], header=FALSE)
+names(pred)='Y'
+data=read.table('stock_Return_v1.txt', header=T)
+data_merge=list('M'=data$M.., 'Y'=pred$Y)
+
+lineout_5000=bugs(data=data_merge, 
+             inits=lineinits, 
+             parameters.to.save=c('alpha', 'beta', 'pred'), 
+             model.file=linemodel1, n.chains=1, n.iter=5000, codaPkg = TRUE)
+
+coda=read.bugs(lineout_5000)
+par(mar=c(0.1,0.1,0.1,0.1))
+plot(coda, smooth=TRUE)
+geweke.plot(coda)
+HPDinterval(coda)
+cumuplot(coda)
+
+```
+#### Quesiton 2-2
+> What is the probability that the stock is riskier than the market, that is, what is
+the probability of $\beta>1$ (Need to compute this based on your runs). What is the probability that $\alpha$ is greater than 0 ?
+
+```{r}
+coda_data=as.data.frame(coda[1:250,1:2])
+names(coda_data)=c('alpha', 'beta')
+quantile(coda_data$beta)
+b1=ecdf(coda_data$beta)
+1-b1(1)
+
+quantile(coda_data$alpha)
+a1=ecdf(coda_data$alpha)
+1-a1(0)
+```
+
+#### Question 2-3
+> There are several studies in the literature which have investigated whether the $\beta$ coefficient is constant over time. In this case you can do such an analysis by using a hierarchical model setup by introducing a time index $t$ to $\beta$ and writing the model as: <br/><br/>
+<center/>$R_t = \alpha + \beta_t M_t + \varepsilon_t$
+<br/><br/>
+Using a hierarchical Bayes setup we can assume that given mean $\mu$ and precision $\tau$, $\beta_t$'s are e independent and they follow a normal distribution as $(\beta_t|\mu, \tau)~N(\mu, 1/\tau)$ and also specify a prior distribution $h(\mu, \tau)$.<br/>
+more specifically consider the setup: <br/>
+<center>$R_t|m_t~N(m_t, 1/\phi)$,<center/><br/>
+<center>$m_t=\alpha+\beta_t M_t$,<center/> <br/>
+<center>$R_t|m_t$ are independent for $t=1,...n$,<center/> <br/>
+<center>$\beta_t|\mu,\tau~N(\mu,1/\tau)$,<center/><br/>
+<center>$\beta_t|\mu, \tau$ are independent for $t=1,...n$,<center/> <br/>
+<center>$\alpha~N(0,1/0.01)$,<center/><br/>
+<center>$\mu~N(0,1/0.01)$,<center/><br/>
+<center>$\phi~Gamma(0.01,0.01)$,<center/><br/>
+<center>$\tau~Gamma(0.01,0.01)$,<center/><br/>
+In your analysis use WinBUGS with an initial run of 5,000 iterations and after that collect samples based on 5,000 iterations. Using WinBUGS estimate the above model and based on your results and using boxplots, try to assess for this stock whether the $\beta$'s stan constant over time
+
+```{r}
+linemodel2 <- function() {
+  for (j in 1:119) {
+    beta[j] ~ dnorm(mu, sigma)
+    Y[j] ~ dnorm(mt[j], sigma)  
+    mt[j] <- alpha + beta[j] * M[j]
+  }
+ 
+  ## prediction
+  alpha ~ dnorm(0, 10)
+  mu ~ dnorm(0, 10)
+  phi ~ dgamma(0.01, 0.01)
+  tau ~ dgamma(0.01, 0.01)
+  sigma <- 1/sqrt(tau)
+}
+
+lineout5000_2=bugs(data=data_merge, 
+              inits=lineinits, 
+              parameters.to.save=c('alpha', 'beta', 'Y', 'mu'), 
+              model.file=linemodel2, n.chains=1, n.iter=5000, codaPkg = TRUE)
+
+
+
+coda2=read.bugs(lineout5000_2)
+coda_data2=as.data.frame(coda2[1:1250, 2:120])
+boxplot(coda_data2)
+```
+
+#### Question 2-4
+> What is the posterior probability that $\beta_19>\beta_1$ ? 
+
+```{r}
+b19=ecdf(coda_data2$beta.19.)
+b1=ecdf(coda_data2$beta.1.)
+plot(b19, cex=0.1)
+lines(b1, lwd=0.1, col='red')
+ttestBF(coda_data2$beta.19., coda_data2$beta.1.)
+```
+#### Quesiton 2-5
+>  In (3) obtain a 95% central credibility interval for $\mu$ and discuss what $\mu$ represents in the model. What is the posterior probability that $\mu>1$?
+
+```{r}
+mu=as.data.frame(coda2[1:1250, 1:122])
+mu=ecdf(mu$mu)
+1-mu(1)
+plot(mu)
+```
+#### Quesiton 2-6
+>  Using the Deviance Information Criterion (DIC) compare this model with the constant $\beta$ model of (1) and discuss which one is a better model and why.
+
+```{r}
+library(AICcmodavg)
+linemodel1 <- function() {
+  for (j in 1:119) {
+
+    Y[j] ~ dnorm(mu[j], sigma)  ## Response values Y are Normally distributed
+    mu[j] <- alpha + beta * M[j]  ## linear model with x values centred
+  }
+  alpha ~ dnorm(0, 10)
+  beta ~ dnorm(0, 10)
+  tau ~ dgamma(0.01, 0.01)
+  sigma <- 1/tau
+
+}
+
+lineout1=bugs(data='Stock_Return.txt', 
+             inits=lineinits, 
+             parameters.to.save=c('alpha', 'beta'), 
+             model.file=linemodel1, n.chains=1, n.iter=5000)
+
+linemodel2 <- function() {
+  for (j in 1:119) {
+    beta[j] ~ dnorm(mu, sigma)
+    Y[j] ~ dnorm(mt[j], sigma)  ## Response values Y are Normally distributed
+    mt[j] <- alpha + beta[j] * M[j]
+    ## linear model with x values centred
+  }
+  alpha ~ dnorm(0, 10)
+  mu ~ dnorm(0, 10)
+  phi ~ dgamma(0.01, 0.01)
+  tau ~ dgamma(0.01, 0.01)
+  sigma <- 1/tau
+}
+
+lineout2=bugs(data='Stock_Return.txt', 
+              inits=lineinits, 
+              parameters.to.save=c('alpha', 'beta', 'mu'), 
+              model.file=linemodel2, n.chains=1, n.iter=5000)
+
+DIC(lineout1)
+DIC(lineout2)
+
+```
+### Main Question 3
+> Consider the paper given by the file "Lindley_1968.pdf". The file contains the article titled "Decision Making" by Dennis V. Lindley. Please read the paper and go over especially pages 316-321 very carefully
+
+#### Question 3-1
+>  In a paragraph or two (in strictly less than a page), summarize what Lindley means by "coherence in decision making under uncertainty"
+
+> Answer <br/>
+The most important question in modern statistics is “is that of deciding whether or not” a sample has been drawn under the hypothesis stated. This means that in addition to the observed samples, it also includes a decision-making space, which contains only two elements: “accept’ and ‘reject’. However, Neyman argued that decision-making should be further explained in accordance with 'pre-probability'. In other words, the hypothesis should be determined by what you thought before looking at the data. Therefore, Wald explained that the hypothesis tests of 'accept' and 'reject' should not only be considered, but should also be considered in combination of as many hypotheses and all decision-making as possible to find one correct hypothesis. What is important here is the concept of coherence. For example, suppose we have a hypothesis of H1, H2, H3... HN, and there are d1, d2, d3, ... dm lists of decisions. Here we do not yet know which decision is right to determine. The way in which the hypothesis is tested in the presence of uncertainty about the outcome should be exactly the same as the way in which the other hypotheses are tested. So what can we think of uncertainty? Imagine a dice. In general, it has been widely known that a dice has a 1/6 chance of getting out of one of the six sides, and the uncertainty of the hypothesis (the dice will be 4) can be thought of as 5/6. Thus, it can be assumed that accepting this would have some unique probability to explain the uncertainty of each hypothesis. In other words, uncertainty is the probability that a decision will be made in making that decision. In this case, consistency is essential to test this uncertainty, and if the decision is inconsistent, the probability of uncertainty will fall into more unknown numbers rather than having any unique probability. Consequently, consistency in decision-making under uncertainty would be reliable in the conclusion drawn from a set of hypotheses and decisions, which ultimately means that the trust in these results could lead to the highest utility of decision-making.
+
+#### Question 3-2
+>  What is the Bayes solution in making a decision, that is, what criterion is used by a Bayesian in choosing an alternative ? What notion justifies the use of this criterion ?
+
+> Answer <br/>
+When making a decision, Bayes solution establishes multiple hypotheses where only one is true (h1, h2...hn) have only one decision to choose from (d1, d2...dm) and then judge a combination of hypotheses and decisions. The combination at this time is the result. To select a better alternative, Bayesian assigns a 'probability' to each hypothesis and, based on this value, considers the expected loss associated with the decision and chooses a decision with the minimum expected loss. This probability, in turn, justifies the use of the criterion because when choosing that hypothesis and decision, humans will eventually seek maximum 'satisfaction' and 'utility'.
+
+

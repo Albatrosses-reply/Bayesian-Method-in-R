@@ -1,0 +1,363 @@
+---
+output:
+  html_document: 
+  pdf_document:
+    keep_tex: yes
+    latex_engine: xelatex
+editor_options:
+  chunk_output_type: console
+---
+
+```{r global-options, include=FALSE}
+knitr::opts_chunk$set(warning=FALSE)
+```
+```{r, setup, include=FALSE}
+knitr::opts_knit$set(root.dir ="~/RLectureData", echo=TRUE)
+```
+
+# Assignment 2
+### 320200064 MIS 박사과정 강호준
+### 2021.04.14 
+### Part 1
+> Consider the Bernoulli/Binomial Model of Assignment 1. Now assume that you hvae a beta prior on $\theta$ with parameters $a=0.5$ and $b=0.5$. Given an inspection sample of $n=50$, items where $y=7$ were found defective, develop a Bayesian analysis using the given beta prior. More specifically :
+
+---
+
+#### Question 1)
+> Obtain the posterior distribution of $\theta$ given the inspection sample. In so doing, present the plot of the prior and posterior distribution of $\theta$ using the scales in $X$ and $Y$ axes. 
+
+```{r}
+#Parameter
+library(ggplot2)
+library(ggthemes)
+y=7
+n=50
+a=0.5
+b=0.5
+theta=seq(0,1,length=50)
+
+#Likelihood
+lik=3000*theta^y*(1-theta)^(n-y)
+
+#Prior & Posterior
+prior=dbeta(theta, a, b)
+post=dbeta(theta, a+y, b+n-y)
+
+betabayes=data.frame(theta, prior, post, lik)
+#Draw Plot
+ggplot(data=betabayes, aes(x=theta, y=post))+
+  geom_line(colour='blue', linetype=1, size=1)+
+  geom_line(aes(x=theta, y=lik), colour='red', linetype=3, size=1)+
+  geom_line(aes(x=theta, y=prior), linetype=4, size=1)+
+  labs(title="Distribution  of Theta",
+       x="Theta",
+       y="Probabilities")+
+  theme_bw()
+
+```
+
+#### Question 2)
+> Obtain the posterior mean and variance of $\theta$ given the inspection sample
+
+```{r}
+mean=a/(a+b)
+variance=(a*b)/((a+b)^2)/(a+b+1)
+mean ; variance
+```
+
+Statistics|Value
+:---:|:---
+__Mean__|0.5
+__Variance__|0.125
+
+#### Question 3)
+> Obtain the 95% central posterior credible interval for $\theta$ and interpret it. 
+
+```{r}
+astar=a+y
+bstar=b+n-y
+
+lower=qbeta(0.025,astar,bstar)
+upper=qbeta(0.975,astar,bstar)
+lower
+upper
+
+```
+C.I|Value
+:---:|:---
+__0.25__|0.0648
+__0.975__|0.2553
+
+#### Question 4)
+> Test the Bayesian hypothesis that $\theta \le 0.09$
+
+##### $h_0 : \theta \leq 0.09$
+
+##### $h_a : \theta > 0.09$
+
+```{r}
+h0=pbeta(0.09,astar,bstar)
+h1=1-h0
+h1/h0
+
+```
+> the posterior odds against null hypothesis is : 7.8923 to 1
+
+#### Question 5)
+>Test the Bayesian hypothesis that $0.04 \leq \theta \leq 0.12$
+
+#### $h_0 : 0.04 \leq \theta \leq 0.12$
+
+#### $h_1 : \theta \leq 0.04 \; and \; 0.12 \leq \theta$
+
+```{r}
+p04=pbeta(0.04, astar, bstar)
+p012=pbeta(0.12, astar, bstar)
+h0=p012-p04
+h1=1-h0
+h1/h0
+```
+> the posterior odds against null hypothesis is : 2.1842 to 1
+
+#### Question 6)
+>Obtain the posterior predictive distribution of number of defectives $Y_f$ in a future inspection sample of $n_f = 15$, and plot this distribution. What is the posterior probability that $Y_f \ge 2$.
+
+```{r}
+nf=15
+
+yf=seq(0,nf,by=1)
+dm=nf+1
+
+pred=rep(0,dm)
+sum.pred=rep(0,dm)
+for (i in 1:dm) {
+  pred[i]=factorial(nf)/(factorial(yf[i])*factorial(nf-yf[i]))*gamma(astar+bstar)/(gamma(astar)*gamma(bstar))*gamma(astar+yf[i])*gamma(bstar+nf-yf[i])/gamma(astar+bstar+nf)
+  sum.pred[i] = sum(pred[1:i])
+                                                        
+}
+Postpre=data.frame(yf, pred, sum.pred )
+ggplot(data=Postpre, aes(x=yf, y=pred))+
+  geom_bar(stat='identity',width=1, fill='red', alpha=0.5, color='cyan')+
+  geom_line(aes(x=yf, y=sum.pred), size=1.5, linetype=2)
+
+```
+
+#### Question 7) 
+> Repeat parts (2)-(5) using the large sample results and the beta prior on $\theta$ parameters $a=0.5 \; and \; b=0.5$
+
+```{r}
+#(1)
+y=7
+n=200
+a=0.5
+b=0.5
+theta=seq(0,1,length=50)
+
+#Likelihood
+lik=3000*theta^y*(1-theta)^(n-y)
+
+#Prior & Posterior
+prior=dbeta(theta, a, b)
+post=dbeta(theta, a+y, b+n-y)
+
+betabayes=data.frame(theta, prior, post, lik)
+#Draw Plot
+ggplot(data=betabayes, aes(x=theta, y=post))+
+  geom_line(colour='blue', linetype=1, size=1)+
+  geom_line(aes(x=theta, y=lik), colour='red', linetype=3, size=1)+
+  geom_line(aes(x=theta, y=prior), linetype=4, size=1)+
+  labs(title="Distribution  of Theta",
+       x="Theta",
+       y="Probabilities")+
+  theme_bw()
+
+#(2)
+mean=a/(a+b)
+variance=(a*b)/((a+b)^2)/(a+b+1)
+mean ; variance
+
+#(3)
+astar=a+y
+bstar=b+n-y
+
+lower=qbeta(0.025,astar,bstar)
+upper=qbeta(0.975,astar,bstar)
+lower
+upper
+
+#(4)
+h0=pbeta(0.09,astar,bstar)
+h1=1-h0
+h1/h0
+
+#(5)
+p04=pbeta(0.04, astar, bstar)
+p012=pbeta(0.12, astar, bstar)
+h0=p012-p04
+h1=1-h0
+h1/h0
+```
+
+----
+
+### Part 2 Bayes Factors
+> Consider the Bernoulli/Binomial Model of Part 1 With the beta prior on $\theta$ with parameters $a=0.5 \; and \; b=0.5$. Given an inspection sample of $n=50$ items where $y=7$ were found defective
+
+#### Question 1
+>Obtain the Bayes factor (BF) in favor of $h_0$ to test the hypotheses $h_0 \theta = 0.12$ versus $h1:\theta \neq 0.12$ and interpret its meaning.
+
+
+```{r}
+thetazero=0.12
+a=0.5
+b=0.5
+n=50
+y=7
+BF = 
+  ((thetazero^y)*((1-0.12)^43))/
+  ((gamma(a+b)/(gamma(a)*gamma(b)))*(gamma(a+y)*(gamma(b+n-y))/gamma(a+b+n)))
+
+BF
+
+prm0=(1+1/BF)^-1
+prm1=1-prm0
+
+```
+#### Question 2
+> Assuming equal probabilities for both hypotheses, obtain the posterior probability of $h_0$ and compare it with the classical $p$ value (based on normal approximation)
+
+```{r}
+astar=a+y
+bstar=b+n-y
+
+lower=qbeta(0.12,astar,bstar)
+upper=qbeta(0.88,astar,bstar)
+lower
+```
+
+#### Question 3
+> Repeat (1) and (2) for hypotheses $h_0 : \theta = 0.06 $ versus $h_1:\theta\neq 0.06
+
+```{r}
+thetazero=0.06
+a=0.5
+b=0.5
+n=50
+y=7
+BF = 
+  ((thetazero^y)*((1-thetazero)^43))/
+  ((gamma(a+b)/(gamma(a)*gamma(b)))*(gamma(a+y)*(gamma(b+n-y))/gamma(a+b+n)))
+
+BF
+
+prm0=(1+1/BF)^-1
+prm1=1-prm0
+
+astar=a+y
+bstar=b+n-y
+
+lower=qbeta(0.06,astar,bstar)
+upper=qbeta(0.88,astar,bstar)
+lower
+```
+
+### Part 3. Geometric Model
+> A manufacturing firm uses an inspection process as a part of their quality control effort. Inso doing, they use identical inspection stations and at each station products are tested until a defective item is found. They believe that number of items inspected at each station follows a geometric distribution given as 
+
+> $p(y|\theta)=Pr(Y_i=y|\theta)=\theta(1-\theta)^y-1$
+
+>where $\theta$ represents the proportion of defectives for the particular product. Note that in the above it is assumed the number of items inspected each station is assumed to be identically distributed with paramter $\theta$
+
+#### Question 1
+> Assume that a random sample $y^(n) = (y_1, y_2, ..., y_n)$ is obtained based on inspections at $n$ stations. Based on this data, write down the likelihood function of $\theta$ and obtain (in analytical form) the maximum likelihood estimate (MLE) of $\theta$. Please show your work.
+
+```{r}
+n=50
+y=7
+theta=seq(0, 50, by=1)
+rand=dbinom(theta, 50, 0.1)
+lik=rand^y*(1-rand)^(n-y)
+data=data.frame(rand, lik)
+ggplot(data=data, aes(theta, lik))+
+  geom_bar(stat='identity',width=0.01, color='blue')+
+  theme_economist()+
+  ggtitle("Likelihood Function")+
+  xlab("Theta")+
+  ylab("Likelihood")
+max(data$lik)
+```
+#### Question 2
+> Assume a beta prior density with parameters $a_0$ and $b_0$ for $\theta$, that is \$theta ~ Beta(a_0, b_0). Given the data $y^(n)$, obtain the posterior distribution of $\theta$. Pleas show your work. 
+
+```{r}
+#Parameter
+library(ggplot2)
+library(ggthemes)
+y=7
+n=50
+a=0.5
+b=15
+theta=seq(0,1,length=50)
+
+#Likelihood
+lik=3000*theta^y*(1-theta)^(n-y)
+
+#Prior & Posterior
+prior=dbeta(theta, a, b)
+post=dbeta(theta, a+y, b+n-y)
+
+betabayes=data.frame(theta, prior, post, lik)
+#Draw Plot
+ggplot(data=betabayes, aes(x=theta, y=post))+
+  geom_line(colour='blue', linetype=1, size=1)+
+  geom_line(aes(x=theta, y=lik), colour='red', linetype=3, size=1)+
+  geom_line(aes(x=theta, y=prior), linetype=4, size=1)+
+  labs(title="Distribution  of Theta",
+       x="Theta",
+       y="Probabilities")+
+  theme_bw()
+```
+
+#### Question 3
+> Assume that the prior is specified as $\theta ~ Beta(a_0=1, b_0=1)$ and we have observed a sample of $n = 2$, where $y_1=8$ and $y_2 = 12$. Based on this:
+>1.  Compute the posterior mean of $\theta$
+
+```{r}
+a=1
+b=1
+n=20 
+y1=8
+y2=12
+theta1=rbeta(50, a+y1, b+n-y1)
+theta2=rbeta(50, a+y2, b+n-y2)
+mean=mean(theta2<theta1)
+
+astar1=a+y1
+bstar1=b+n-y1
+astar2=a+y2
+bstar2=b+n-y2
+
+lik1=dbeta(theta, a, b)
+
+mean=((astar1)/(astar1+bstar1))-((astar2)/(astar2+bstar2))
+mean
+
+```
+>2. Obtain a 95% posterior central credibility interval for $\theta$ and interpret it
+
+```{r}
+var=((((astar1)/(astar1+bstar1))*(1-((astar1)/(astar1+bstar1))))/(astar1+bstar1+1))+
+  ((((astar2)/(astar2+bstar2))*(1-((astar2)/(astar2+bstar2))))/(astar2+bstar2+1))
+
+lower=mean-1.96*sqrt(var)
+upper=mean+1.96*sqrt(var)  
+lower ; upper
+```
+>3. Obtain the posterior probability of $\theta < 0.05$
+
+```{r}
+lower=mean-1.65*sqrt(var)
+lower
+```
+
+

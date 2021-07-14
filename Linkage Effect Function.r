@@ -1,3 +1,7 @@
+### insert library
+library(sweep)
+
+### 1. Making Linkage effects function
 Making_linkage_effects <- function(COUNTRY, RESULT, YEAR, DS) {
 
   COUNTRY1_56 <- paste0(COUNTRY,c(1:56))

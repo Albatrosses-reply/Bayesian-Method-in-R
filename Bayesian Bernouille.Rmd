@@ -15,10 +15,7 @@ knitr::opts_chunk$set(warning=FALSE)
 knitr::opts_knit$set(root.dir ="~/RLectureData", echo=TRUE)
 ```
 
-# Assignment 2
-### 320200064 MIS 박사과정 강호준
-### 2021.04.14 
-### Part 1
+# Part 1
 > Consider the Bernoulli/Binomial Model of Assignment 1. Now assume that you hvae a beta prior on $\theta$ with parameters $a=0.5$ and $b=0.5$. Given an inspection sample of $n=50$, items where $y=7$ were found defective, develop a Bayesian analysis using the given beta prior. More specifically :
 
 ---

@@ -1,1 +1,3 @@
-# R-Python-Project
+# Bayesian Method in R 
+
+## Use case in Bayesian Method
